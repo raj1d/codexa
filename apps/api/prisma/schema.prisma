@@ -1,0 +1,312 @@
+// CODEXA Prisma Schema
+// Database: PostgreSQL 16 (Neon) with pgvector extension
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+  provider   = "postgresql"
+  url        = env("DATABASE_URL")
+  extensions = [vector, uuid_ossp(map: "uuid-ossp")]
+}
+
+// ── User ─────────────────────────────────────────────
+
+model User {
+  id             String   @id @default(uuid())
+  email          String   @unique
+  name           String
+  passwordHash   String?  @map("password_hash")
+  avatarUrl      String?  @map("avatar_url")
+  githubUsername  String?  @unique @map("github_username")
+  githubId       String?  @unique @map("github_id")
+  role           Role     @default(STUDENT)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  uploadedResources Resource[]
+  progress          UserProgress[]
+  submissions       Submission[]
+  projects          Project[]
+  ratings           ProjectRating[]
+  bookmarks         ProjectBookmark[]
+  streak            Streak?
+  badges            UserBadge[]
+  deadlines         Deadline[]
+
+  @@map("users")
+}
+
+enum Role {
+  STUDENT
+  CONTRIBUTOR
+  ADMIN
+}
+
+// ── Study Hub ────────────────────────────────────────
+
+model Semester {
+  id       String    @id @default(uuid())
+  number   Int       @unique
+  name     String
+
+  subjects Subject[]
+
+  @@map("semesters")
+}
+
+model Subject {
+  id         String   @id @default(uuid())
+  name       String
+  code       String   @unique
+  semesterId String   @map("semester_id")
+
+  semester   Semester @relation(fields: [semesterId], references: [id])
+  units      Unit[]
+
+  @@map("subjects")
+}
+
+model Unit {
+  id        String @id @default(uuid())
+  number    Int
+  name      String
+  subjectId String @map("subject_id")
+
+  subject   Subject    @relation(fields: [subjectId], references: [id])
+  resources Resource[]
+
+  @@unique([subjectId, number])
+  @@map("units")
+}
+
+model Resource {
+  id          String         @id @default(uuid())
+  title       String
+  description String?
+  fileType    FileType       @map("file_type")
+  fileUrl     String         @map("file_url")
+  semesterId  String         @map("semester_id")
+  subjectId   String         @map("subject_id")
+  unitId      String         @map("unit_id")
+  uploaderId  String         @map("uploader_id")
+  status      ResourceStatus @default(PENDING)
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  unit     Unit           @relation(fields: [unitId], references: [id])
+  uploader User           @relation(fields: [uploaderId], references: [id])
+  progress UserProgress[]
+
+  @@map("resources")
+}
+
+enum FileType {
+  PDF
+  NOTES
+  PYQ
+  LAB_MANUAL
+}
+
+enum ResourceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// ── Progress Tracking ────────────────────────────────
+
+model UserProgress {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  resourceId  String   @map("resource_id")
+  completedAt DateTime @default(now()) @map("completed_at")
+
+  user     User     @relation(fields: [userId], references: [id])
+  resource Resource @relation(fields: [resourceId], references: [id])
+
+  @@unique([userId, resourceId])
+  @@map("user_progress")
+}
+
+// ── Coding & DSA Practice (Phase 2) ──────────────────
+
+model Problem {
+  id               String     @id @default(uuid())
+  title            String
+  slug             String     @unique
+  description      String
+  difficulty       Difficulty @default(EASY)
+  topic            String
+  solutionTemplate Json       @map("solution_template")
+  timeLimit        Float      @default(2.0) @map("time_limit")
+  memoryLimit      Int        @default(256) @map("memory_limit")
+  order            Int        @default(0)
+  createdAt        DateTime   @default(now()) @map("created_at")
+  updatedAt        DateTime   @updatedAt @map("updated_at")
+
+  testCases   TestCase[]
+  submissions Submission[]
+
+  @@map("problems")
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+model TestCase {
+  id             String  @id @default(uuid())
+  problemId      String  @map("problem_id")
+  input          String
+  expectedOutput String  @map("expected_output")
+  isHidden       Boolean @default(false) @map("is_hidden")
+
+  problem Problem @relation(fields: [problemId], references: [id], onDelete: Cascade)
+
+  @@map("test_cases")
+}
+
+model Submission {
+  id              String           @id @default(uuid())
+  userId          String           @map("user_id")
+  problemId       String           @map("problem_id")
+  language        String
+  code            String
+  status          SubmissionStatus @default(PENDING)
+  passedTestCases Int              @default(0) @map("passed_test_cases")
+  totalTestCases  Int              @default(0) @map("total_test_cases")
+  runtimeMs       Float?           @map("runtime_ms")
+  memoryKb        Float?           @map("memory_kb")
+  output          String?
+  errorMessage    String?          @map("error_message")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  problem Problem @relation(fields: [problemId], references: [id])
+
+  @@map("submissions")
+}
+
+enum SubmissionStatus {
+  PENDING
+  RUNNING
+  PASSED
+  FAILED
+  TIMEOUT
+  COMPILATION_ERROR
+}
+
+// ── Open-Source Project & Resource Hub (Phase 3) ────
+
+model Project {
+  id          String         @id @default(uuid())
+  title       String
+  slug        String         @unique
+  description String
+  repoUrl     String         @map("repo_url")
+  demoUrl     String?        @map("demo_url")
+  docsUrl     String?        @map("docs_url")
+  tags        String[]
+  submitterId String         @map("submitter_id")
+  status      ResourceStatus @default(APPROVED)
+  starsCount  Int            @default(0) @map("stars_count")
+  avgRating   Float          @default(5.0) @map("avg_rating")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  submitter User              @relation(fields: [submitterId], references: [id])
+  ratings   ProjectRating[]
+  bookmarks ProjectBookmark[]
+
+  @@map("projects")
+}
+
+model ProjectRating {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  projectId String   @map("project_id")
+  score     Int      @default(5)
+  feedback  String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("project_ratings")
+}
+
+model ProjectBookmark {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  projectId String   @map("project_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user    User    @relation(fields: [userId], references: [id])
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("project_bookmarks")
+}
+
+// ── Gamification, Streaks & Leaderboard (Phase 5) ───
+
+model Streak {
+  id             String    @id @default(uuid())
+  userId         String    @unique @map("user_id")
+  currentStreak  Int       @default(1) @map("current_streak")
+  longestStreak  Int       @default(1) @map("longest_streak")
+  lastActiveDate DateTime  @default(now()) @map("last_active_date")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("streaks")
+}
+
+model Badge {
+  id          String   @id @default(uuid())
+  name        String
+  slug        String   @unique
+  description String
+  icon        String
+  points      Int      @default(50)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  users UserBadge[]
+
+  @@map("badges")
+}
+
+model UserBadge {
+  id       String   @id @default(uuid())
+  userId   String   @map("user_id")
+  badgeId  String   @map("badge_id")
+  earnedAt DateTime @default(now()) @map("earned_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  badge Badge @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, badgeId])
+  @@map("user_badges")
+}
+
+model Deadline {
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  title       String
+  dueDate     DateTime @map("due_date")
+  subjectCode String?  @map("subject_code")
+  isCompleted Boolean  @default(false) @map("is_completed")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("deadlines")
+}

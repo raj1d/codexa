@@ -1,0 +1,26 @@
+{
+  "name": "codexa",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-Source Education Hub for IT/CSE Students",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@12.3.4",
+  "scripts": {
+    "dev": "pnpm --filter @codexa/web dev",
+    "dev:api": "pnpm --filter @codexa/api start:dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "clean": "pnpm -r clean",
+    "validate": "node scripts/validate-connections.mjs",
+    "infra:docker": "docker compose up -d"
+  },
+  "dependencies": {
+    "ioredis": "^6.0.0",
+    "pg": "^8.23.0"
+  }
+}

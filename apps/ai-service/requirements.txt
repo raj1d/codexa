@@ -1,0 +1,11 @@
+# CODEXA AI Service - Python dependencies
+# Phase 4: AI Study Assistant (RAG-based)
+# Install: pip install -r requirements.txt
+
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+llama-index>=0.11.0
+pgvector>=0.3.0
+psycopg2-binary>=2.9.9
+python-dotenv>=1.0.0
+python-multipart>=0.0.9
