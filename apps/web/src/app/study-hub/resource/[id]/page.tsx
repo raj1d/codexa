@@ -20,8 +20,9 @@ import {
   Eye,
 } from "lucide-react";
 import { FullNotesContent } from "@/components/study-hub/full-notes-content";
+import { SlidePresentationViewer } from "@/components/study-hub/slide-presentation-viewer";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api";
+import { API_URL } from "@/lib/api-config";
 
 interface Resource {
   id: string;
@@ -153,6 +154,7 @@ export default function ResourceDetailPage() {
 
   const isDarshan = resource.title.includes("Darshan Uni");
   const isGtuRanker = resource.title.includes("GTURanker");
+  const isPpt = resource.title.includes("Presentation Slides") || resource.title.includes("PPT");
 
   // Generate safe direct PDF / Google Docs Viewer embed URL
   const rawUrl = downloadUrl || resource.fileUrl;
@@ -193,7 +195,7 @@ export default function ResourceDetailPage() {
             >
               <Button variant="secondary" size="sm" className="text-xs hidden sm:flex">
                 <ExternalLink className="h-3.5 w-3.5" />
-                Open Source Link
+                Open Source Portal
               </Button>
             </a>
 
@@ -204,7 +206,7 @@ export default function ResourceDetailPage() {
               className="text-xs"
             >
               <Download className="h-3.5 w-3.5" />
-              Download Notes
+              {isPpt ? "Download PPT Deck" : "Download PDF Notes"}
             </Button>
           </div>
         </div>
@@ -242,7 +244,7 @@ export default function ResourceDetailPage() {
           <div className="flex flex-wrap items-center gap-6 pt-4 border-t border-white/[0.06] font-mono text-xs text-gray-500">
             <div className="flex items-center gap-1.5">
               <User className="h-3.5 w-3.5 text-[#DEDBC8]" />
-              <span>Publisher: {resource.uploader.name}</span>
+              <span>Verified Publisher: {resource.uploader.name}</span>
             </div>
             <div className="flex items-center gap-1.5">
               <Calendar className="h-3.5 w-3.5 text-[#DEDBC8]" />
@@ -250,7 +252,7 @@ export default function ResourceDetailPage() {
             </div>
             <div className="flex items-center gap-1.5">
               <BookOpen className="h-3.5 w-3.5 text-[#DEDBC8]" />
-              <span>Verified GTU Curriculum</span>
+              <span>GTU Academic Curriculum</span>
             </div>
           </div>
         </div>
@@ -293,7 +295,7 @@ export default function ResourceDetailPage() {
                 }`}
               >
                 <Eye className="h-3.5 w-3.5" />
-                <span>PDF & Presentation Deck</span>
+                <span>{isPpt ? "Presentation Deck & Slides" : "Document & Slide Viewer"}</span>
               </button>
 
               <button
@@ -316,43 +318,51 @@ export default function ResourceDetailPage() {
                 rel="noopener noreferrer"
                 className="hover:text-white flex items-center gap-1 text-[11px]"
               >
-                <span>Direct Document Portal</span>
+                <span>Direct University Source</span>
                 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
           </div>
 
-          {/* TAB 1: Live Embedded PDF & Presentation Viewer */}
+          {/* TAB 1: Live Presentation Slide Canvas or Document Viewer */}
           {activeViewerTab === "embed" ? (
-            <div className="flex flex-col bg-black">
-              {/* Document Frame */}
-              <div className="w-full h-[720px] relative bg-[#1c1c1c] flex items-center justify-center">
-                <iframe
-                  src={embedViewerUrl}
-                  className="w-full h-full border-none"
-                  title={resource.title}
-                  loading="lazy"
-                />
-              </div>
+            isPpt ? (
+              <SlidePresentationViewer
+                subjectName={resource.unit.subject.name}
+                subjectCode={resource.unit.subject.code}
+                unitNumber={resource.unit.number}
+                unitName={resource.unit.name}
+                fileUrl={resource.fileUrl}
+              />
+            ) : (
+              <div className="flex flex-col bg-black">
+                <div className="w-full h-[720px] relative bg-[#1c1c1c] flex items-center justify-center">
+                  <iframe
+                    src={embedViewerUrl}
+                    className="w-full h-full border-none"
+                    title={resource.title}
+                    loading="lazy"
+                  />
+                </div>
 
-              {/* Direct Link Banner */}
-              <div className="p-4 bg-[#141414] border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-gray-400 px-6">
-                <span>
-                  Source: {isDarshan ? "Darshan University (DIET)" : isGtuRanker ? "GTURanker University Archive" : "Verified Academic Portal"}
-                </span>
-                <div className="flex items-center gap-3">
-                  <a
-                    href={resource.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#DEDBC8] hover:underline flex items-center gap-1 font-medium"
-                  >
-                    <span>Open in Fullscreen Tab</span>
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </a>
+                <div className="p-4 bg-[#141414] border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs font-mono text-gray-400 px-6">
+                  <span>
+                    Source: {isDarshan ? "Darshan University (DIET)" : isGtuRanker ? "GTURanker University Archive" : "Verified Academic Portal"}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <a
+                      href={resource.fileUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#DEDBC8] hover:underline flex items-center gap-1 font-medium"
+                    >
+                      <span>Open in Fullscreen Tab</span>
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </a>
+                  </div>
                 </div>
               </div>
-            </div>
+            )
           ) : (
             /* TAB 2: Formatted Academic Notes & 7-Mark PYQ Solutions */
             <div className="p-8 sm:p-12 md:p-14 bg-black/60 max-w-4xl mx-auto w-full">
