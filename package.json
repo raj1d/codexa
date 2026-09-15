@@ -19,7 +19,7 @@
     "validate": "node scripts/validate-connections.mjs",
     "infra:docker": "docker compose up -d"
   },
-  "dependencies": {
+  "devDependencies": {
     "ioredis": "^6.0.0",
     "pg": "^8.23.0"
   }
